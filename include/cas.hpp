@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <map>
 #include <print>
 #include <string>
@@ -16,6 +17,7 @@ public:
     S = 4,   // second
     MS = 5,  // millisecond
   };
+
   static void setResolutionTime(Unit res) { m_res = res; }
   static void setUpdateDuration(unsigned long long millis) {
     m_update = millis;
@@ -54,22 +56,70 @@ class TickBench : public Workbench {
   unsigned long long offset;
 
 public:
-  TickBench(unsigned long long offset, unsigned long long repeat = 0)
+  TickBench(unsigned long long repeat = 0) : repeat(repeat), offset(repeat) {
+    Simulator::insertJobQueue(this, repeat);
+  }
+
+  TickBench(unsigned long long offset, unsigned long long repeat)
       : repeat(repeat), offset(offset) {
     Simulator::insertJobQueue(this, offset);
   }
 
+  void setRepeatTime(unsigned long long r) { repeat = r; }
+
+  virtual void processTick() {
+    std::print("tick bench executed at {}", offset);
+  }
+
   void process() override {
-    if (Simulator::getClock() == offset) {
-      std::print("tick bench executed at {}", offset + repeat);
-    }
+    processTick();
     if (repeat != 0) {
       offset = Simulator::getClock();
-      std::print(", next tick scheduled at {}", offset + repeat);
       Simulator::insertJobQueue(this, offset + repeat);
       offset += repeat;
     }
-    std::print("\n");
+  }
+};
+
+class OutsourceBench : public TickBench {
+  unsigned int batch;
+  std::string m_product;
+
+public:
+  unsigned int m_count;
+
+  OutsourceBench(unsigned long long arrival_time, unsigned int batch,
+                 std::string product, unsigned int count = 0)
+      : TickBench(arrival_time), m_count(count), batch(batch),
+        m_product(product) {}
+
+  void processTick() override {
+    m_count += batch;
+    std::println("imported {} {} - available: {}", batch, m_product, m_count);
+  }
+};
+
+class AssemblyBench : public TickBench {
+  unsigned long long completion_time;
+  std::function<bool()> requirements;
+  bool processing = false;
+
+public:
+  AssemblyBench(unsigned long long completion_time,
+                std::function<bool()> requirements)
+      : TickBench(1), completion_time(completion_time),
+        requirements(requirements) {}
+
+  void processTick() override {
+    std::println("check at assembly bench");
+    if ((!processing && requirements()) || (processing && requirements)) {
+      std::println("processing at assembly bench");
+      processing = true;
+      setRepeatTime(completion_time);
+    } else if (processing && !requirements) {
+      processing = false;
+      setRepeatTime(1);
+    }
   }
 };
 
