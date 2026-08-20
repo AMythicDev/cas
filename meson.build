@@ -8,12 +8,12 @@ else
   add_project_arguments('/permissive-', language : 'cpp')
 endif
 
-
 cas_inc = include_directories('include/')
 cas = static_library('cas', 'src/simulator.cpp', include_directories: [cas_inc])
 
 cas_dep = declare_dependency(link_with : cas,
   include_directories : cas_inc)
 
+subdir('tests/')
 subdir('examples/')
 

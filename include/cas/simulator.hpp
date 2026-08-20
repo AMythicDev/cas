@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cas/real-value.hpp>
 #include <functional>
 #include <map>
 #include <print>
@@ -86,16 +87,17 @@ class OutsourceBench : public TickBench {
   std::string m_product;
 
 public:
-  unsigned int m_count;
+  RealValue<unsigned int> m_count;
 
   OutsourceBench(unsigned long long arrival_time, unsigned int batch,
                  std::string product, unsigned int count = 0)
-      : TickBench(arrival_time), m_count(count), batch(batch),
-        m_product(product) {}
+      : TickBench(arrival_time), batch(batch), m_product(product),
+        m_count(count) {}
 
   void processTick() override {
-    m_count += batch;
-    std::println("imported {} {} - available: {}", batch, m_product, m_count);
+    m_count = *m_count + batch;
+    std::println("imported {} {} - available: {}", batch, m_product,
+                 *m_count + batch);
   }
 };
 

@@ -1,4 +1,4 @@
-#include <cas.hpp>
+#include <cas/simulator.hpp>
 #include <print>
 #include <thread>
 
@@ -20,8 +20,8 @@ void Simulator::run() {
       std::println("reason: no more jobs to run");
       return;
     }
-
     ++clock;
+    RealValueProvider::tickRegistry();
     std::this_thread::sleep_for(
         std::chrono::milliseconds(Time::getUpdateDuration()));
   }
