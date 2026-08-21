@@ -8,6 +8,8 @@
 #include <vector>
 
 namespace cas {
+using simtime_t = unsigned long long;
+
 class Time {
 public:
   enum Unit : int {
@@ -23,12 +25,12 @@ public:
   static void setUpdateDuration(unsigned long long millis) {
     m_update = millis;
   }
-  static long long getUpdateDuration() { return m_update; }
+  static unsigned long long getUpdateDuration() { return m_update; }
   static Unit getResolutionTime() { return m_res; }
 
 private:
   inline static Unit m_res;
-  inline static long long m_update;
+  inline static unsigned long long m_update;
 };
 
 class Workbench {
@@ -38,35 +40,35 @@ public:
 };
 
 class Simulator {
-  static inline unsigned long long clock = 0;
-  static inline std::map<unsigned long long, std::vector<Workbench *>>
-      job_queue;
+  static inline simtime_t clock = 0;
+  static inline std::map<simtime_t, std::vector<Workbench *>> job_queue;
   static inline unsigned int jobs_count = 0;
 
 public:
   static void run();
-  static unsigned long long getClock() { return clock; }
-  static void insertJobQueue(Workbench *wb, unsigned long long time) {
+  static simtime_t getClock() { return clock; }
+  static void insertJobQueue(Workbench *wb, simtime_t time) {
     job_queue[time].push_back(wb);
     jobs_count++;
   }
+  static void removeJob(Workbench *wb);
 };
 
 class TickBench : public Workbench {
-  unsigned long long repeat;
-  unsigned long long offset;
+  simtime_t repeat;
+  simtime_t offset;
 
 public:
-  TickBench(unsigned long long repeat = 0) : repeat(repeat), offset(repeat) {
+  TickBench(simtime_t repeat) : repeat(repeat), offset(0) {
     Simulator::insertJobQueue(this, repeat);
   }
 
-  TickBench(unsigned long long offset, unsigned long long repeat)
+  TickBench(simtime_t offset, simtime_t repeat)
       : repeat(repeat), offset(offset) {
     Simulator::insertJobQueue(this, offset);
   }
 
-  void setRepeatTime(unsigned long long r) { repeat = r; }
+  void setRepeatTime(simtime_t r) { repeat = r; }
 
   virtual void processTick() {
     std::print("tick bench executed at {}", offset);
@@ -89,7 +91,7 @@ class OutsourceBench : public TickBench {
 public:
   RealValue<unsigned int> m_count;
 
-  OutsourceBench(unsigned long long arrival_time, unsigned int batch,
+  OutsourceBench(simtime_t arrival_time, unsigned int batch,
                  std::string product, unsigned int count = 0)
       : TickBench(arrival_time), batch(batch), m_product(product),
         m_count(count) {}
@@ -102,25 +104,26 @@ public:
 };
 
 class AssemblyBench : public TickBench {
-  unsigned long long completion_time;
-  std::function<bool()> requirements;
+  simtime_t completion_time;
+  std::function<bool()> assemble;
+  simtime_t check_after;
   bool processing = false;
 
 public:
-  AssemblyBench(unsigned long long completion_time,
-                std::function<bool()> requirements)
-      : TickBench(1), completion_time(completion_time),
-        requirements(requirements) {}
+  AssemblyBench(simtime_t completion_time, std::function<bool()> assemble,
+                simtime_t check_after = 1)
+      : TickBench(check_after), completion_time(completion_time),
+        assemble(assemble), check_after(check_after) {}
 
   void processTick() override {
     std::println("check at assembly bench");
-    if ((!processing && requirements()) || (processing && requirements)) {
+    if ((!processing && assemble()) || (processing && assemble)) {
       std::println("processing at assembly bench");
       processing = true;
       setRepeatTime(completion_time);
-    } else if (processing && !requirements) {
+    } else if (processing && !assemble) {
       processing = false;
-      setRepeatTime(1);
+      setRepeatTime(check_after);
     }
   }
 };

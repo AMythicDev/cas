@@ -26,5 +26,4 @@ void Simulator::run() {
         std::chrono::milliseconds(Time::getUpdateDuration()));
   }
 }
-
 } // namespace cas
