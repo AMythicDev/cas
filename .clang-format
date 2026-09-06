@@ -1,0 +1,9 @@
+---
+Language:        Cpp
+AlignAfterOpenBracket: true
+IndentWidth: 4
+ColumnLimit: 120
+SortIncludes: true
+PointerAlignment: Right
+...
+
